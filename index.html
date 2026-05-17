@@ -163,6 +163,60 @@
     pointer-events: none; z-index: 100; transition: opacity .3s ease; }
   .flash-overlay.flash { opacity: 0.45; }
 
+  /* Session summary modal */
+  .modal { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center;
+    justify-content: center; padding: 12px; }
+  .modal.hidden { display: none; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.75); backdrop-filter: blur(6px); }
+  .modal-content { position: relative; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; max-width: 580px; width: 100%; max-height: 92vh; overflow: hidden;
+    display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .modal-header h2 { margin: 0; font-size: 16px; }
+  .modal-close { background: transparent; border: none; color: var(--muted); font-size: 24px;
+    cursor: pointer; line-height: 1; padding: 0 4px; }
+  .modal-body { padding: 16px; overflow-y: auto; flex: 1; }
+  .modal-actions { padding: 12px 16px; border-top: 1px solid var(--border); display: flex;
+    gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .summary-hero { text-align: center; padding: 6px 0 14px; border-bottom: 1px solid var(--border);
+    margin-bottom: 12px; }
+  .summary-vol { font-size: 38px; font-weight: 800; color: var(--accent);
+    font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .summary-vol-label { font-size: 11px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .06em; font-weight: 600; }
+  .summary-sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .summary-delta { margin-top: 8px; font-size: 14px; font-weight: 700;
+    font-variant-numeric: tabular-nums; }
+  .summary-delta.good { color: var(--good); }
+  .summary-delta.bad { color: var(--bad); }
+  .summary-section { margin: 14px 0; }
+  .summary-section h3 { font-size: 11px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .06em; margin: 0 0 8px; font-weight: 700; }
+  .pr-item { background: rgba(63,185,80,0.12); border-left: 3px solid var(--good);
+    padding: 8px 10px; border-radius: 4px; font-size: 13px; margin-bottom: 4px; }
+  .ex-summary-row { padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 13px;
+    display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .ex-summary-row:last-child { border-bottom: none; }
+  .ex-summary-name { font-weight: 600; flex: 1 1 50%; }
+  .ex-summary-detail { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums;
+    flex: 1 1 auto; text-align: right; min-width: 130px; }
+  .ex-summary-row.rpe-high .ex-summary-detail { color: var(--bad); }
+  .ex-summary-row.rpe-low .ex-summary-detail { color: var(--good); }
+  .rec { background: var(--panel-2); padding: 8px 10px; border-radius: 4px; font-size: 13px;
+    margin-bottom: 4px; border-left: 3px solid var(--accent-2); }
+  .rec.good { border-left-color: var(--good); }
+  .rec.warn { border-left-color: var(--warn); }
+  .rec.bad { border-left-color: var(--bad); }
+  .summary-overall { margin-top: 14px; padding: 10px 12px; background: var(--panel-2);
+    border-radius: 6px; font-size: 13px; color: var(--text); text-align: center; }
+  .summary-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .summary-stat { text-align: center; padding: 8px 4px; background: var(--panel-2);
+    border-radius: 6px; }
+  .summary-stat .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .summary-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .04em; margin-top: 2px; }
+
   .btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 6px;
     font-weight: 600; cursor: pointer; font-size: 14px; }
   .btn:hover { filter: brightness(1.1); }
@@ -364,6 +418,21 @@
   </div>
   <button class="btn small" onclick="addRest(15)">+15s</button>
   <button class="btn small secondary" onclick="cancelRest()">Skip</button>
+</div>
+
+<div id="summary-modal" class="modal hidden">
+  <div class="modal-backdrop" id="summary-backdrop"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="summary-title">Session Complete</h2>
+      <button class="modal-close" id="summary-dismiss" title="Close">×</button>
+    </div>
+    <div class="modal-body" id="summary-body"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="summary-copy">Copy for Excel</button>
+      <button class="btn" id="summary-continue">Continue →</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast">Saved</div>
@@ -1558,6 +1627,8 @@ $("#session-notes").addEventListener("input", e => {
   state.active.notes = e.target.value;
   persistActive();
 });
+let pendingFinishedSession = null;
+
 $("#btn-finish").addEventListener("click", () => {
   const s = state.active;
   s.notes = $("#session-notes").value;
@@ -1565,17 +1636,182 @@ $("#btn-finish").addEventListener("click", () => {
   if (!hasReps) { alert("No sets logged yet."); return; }
   s.finished = true;
   s.finishedAt = Date.now();
-  if (!s.startedAt) s.startedAt = s.finishedAt - 30*60*1000; // fallback 30 min if missing
+  if (!s.startedAt) s.startedAt = s.finishedAt - 30*60*1000;
   s.totalVolume = sessionVolume(s);
   state.history.push(s); saveAll(state.history);
+  cancelRest();
+  pendingFinishedSession = s;
+  showSummary(s);
+});
+
+function buildSummary(sess) {
+  const totalVol = sessionVolume(sess);
+  const dur = (sess.startedAt && sess.finishedAt) ? Math.round((sess.finishedAt - sess.startedAt) / 60000) : null;
+  const priorSame = state.history.filter(h => h.session === sess.session && h !== sess);
+  const lastSame = priorSame[priorSame.length - 1];
+  const lastVol = lastSame ? (lastSame.totalVolume || sessionVolume(lastSame)) : null;
+
+  const exerciseStats = sess.exercises.map(ex => {
+    const repsHit = ex.sets.map(s => parseFloat(s.reps)).filter(v => !isNaN(v) && v > 0);
+    const totalReps = repsHit.reduce((a,b) => a+b, 0);
+    const plannedReps = ex.planReps.reduce((a,b) => a+b, 0);
+    const vol = setVolume(ex);
+    const rpe = avgRPE(ex);
+    const topLoad = Math.max(0, ...ex.sets.map(s => parseFloat(s.weight) || 0));
+    const repsStr = ex.sets.map(s => s.reps || "-").join("/");
+    return { name: ex.name, load: ex.load, unit: ex.unit, repsStr, totalReps, plannedReps, vol, rpe, topLoad };
+  }).filter(s => s.totalReps > 0);
+
+  // PR detection vs all history except this session
+  const prs = [];
+  exerciseStats.forEach(s => {
+    let bestVol = 0, bestLoad = 0;
+    state.history.filter(h => h !== sess && h.session !== sess.session ? true : h !== sess).forEach(h => {
+      h.exercises.forEach(ex => {
+        if (ex.name === s.name) {
+          bestVol = Math.max(bestVol, setVolume(ex));
+          bestLoad = Math.max(bestLoad, ...ex.sets.map(x => parseFloat(x.weight) || 0));
+        }
+      });
+    });
+    if (bestVol > 0 && s.vol > bestVol) prs.push({ type: "volume", ex: s.name, prev: bestVol, now: s.vol });
+    if (bestLoad > 0 && s.topLoad > bestLoad) prs.push({ type: "load", ex: s.name, prev: bestLoad, now: s.topLoad });
+  });
+
+  const allRpes = sess.exercises.flatMap(ex => ex.sets.map(s => parseFloat(s.rpe)).filter(v => !isNaN(v) && v > 0));
+  const overallRpe = allRpes.length ? allRpes.reduce((a,b) => a+b, 0) / allRpes.length : null;
+  const setsLogged = sess.exercises.reduce((a, ex) => a + ex.sets.filter(s => s.reps).length, 0);
+  const totalReps = sess.exercises.reduce((a, ex) => a + ex.sets.reduce((b, s) => b + (parseFloat(s.reps) || 0), 0), 0);
+
+  // Week progress
+  const weekVol = weeklyVolumes().find(([w]) => w === sess.week);
+  const weekTarget = PROGRAM.weeklyTargets[sess.week];
+
+  return { totalVol, dur, lastVol, exerciseStats, prs, overallRpe, setsLogged, totalReps, weekVol: weekVol ? weekVol[1] : 0, weekTarget };
+}
+
+function showSummary(sess) {
+  const sm = buildSummary(sess);
+  $("#summary-title").textContent = `W${sess.week} D${sess.day} — ${sess.session} Complete`;
+  const body = $("#summary-body");
+  body.innerHTML = "";
+
+  // Hero — big volume number + duration
+  const hero = el("div", { class: "summary-hero" });
+  hero.appendChild(el("div", { class: "summary-vol-label" }, "Session volume"));
+  hero.appendChild(el("div", { class: "summary-vol" }, fmtNum(sm.totalVol) + " lbs"));
+  hero.appendChild(el("div", { class: "summary-sub" },
+    `${sm.dur ? sm.dur + " min · " : ""}${sm.setsLogged} sets · ${sm.totalReps} reps`));
+  if (sm.lastVol) {
+    const delta = ((sm.totalVol / sm.lastVol) - 1) * 100;
+    const cls = delta >= 0 ? "good" : "bad";
+    const sign = delta >= 0 ? "+" : "";
+    hero.appendChild(el("div", { class: `summary-delta ${cls}` },
+      `${sign}${delta.toFixed(1)}% vs last ${sess.session} (${fmtNum(sm.lastVol)} lbs)`));
+  } else {
+    hero.appendChild(el("div", { class: "summary-delta" }, `First ${sess.session} in this tracker — baseline set`));
+  }
+  body.appendChild(hero);
+
+  // Compact stats row
+  const stats = el("div", { class: "summary-stats" });
+  stats.appendChild(el("div", { class: "summary-stat" }, [
+    el("div", { class: "v" }, sm.dur ? sm.dur + "m" : "—"),
+    el("div", { class: "l" }, "Duration")
+  ]));
+  stats.appendChild(el("div", { class: "summary-stat" }, [
+    el("div", { class: "v" }, sm.overallRpe ? sm.overallRpe.toFixed(1) : "—"),
+    el("div", { class: "l" }, "Avg RPE")
+  ]));
+  stats.appendChild(el("div", { class: "summary-stat" }, [
+    el("div", { class: "v" }, sm.weekTarget ? Math.round((sm.weekVol / sm.weekTarget) * 100) + "%" : "—"),
+    el("div", { class: "l" }, "Week target")
+  ]));
+  body.appendChild(stats);
+
+  // PRs
+  if (sm.prs.length > 0) {
+    const prSection = el("div", { class: "summary-section" });
+    prSection.appendChild(el("h3", {}, "🏆 New PRs"));
+    sm.prs.forEach(pr => {
+      const txt = pr.type === "volume"
+        ? `${pr.ex} — volume PR: ${fmtNum(pr.now)} lbs (was ${fmtNum(pr.prev)})`
+        : `${pr.ex} — top load: ${pr.now} lbs (was ${pr.prev})`;
+      prSection.appendChild(el("div", { class: "pr-item" }, txt));
+    });
+    body.appendChild(prSection);
+  }
+
+  // Per-exercise breakdown
+  const exSection = el("div", { class: "summary-section" });
+  exSection.appendChild(el("h3", {}, "Exercise breakdown"));
+  sm.exerciseStats.forEach(s => {
+    const cls = s.rpe == null ? "" : s.rpe <= 7 ? "rpe-low" : s.rpe >= 8.5 ? "rpe-high" : "";
+    const row = el("div", { class: "ex-summary-row " + cls });
+    row.appendChild(el("div", { class: "ex-summary-name" }, s.name));
+    const loadStr = s.load > 0 ? `${s.load} ${s.unit}` : "BW";
+    const rpeStr = s.rpe ? ` · RPE ${s.rpe.toFixed(1)}` : "";
+    row.appendChild(el("div", { class: "ex-summary-detail" },
+      `${s.repsStr} @ ${loadStr}${rpeStr} · ${fmtNum(s.vol)} lbs`));
+    exSection.appendChild(row);
+  });
+  body.appendChild(exSection);
+
+  // Recommendations for next session
+  const recSection = el("div", { class: "summary-section" });
+  recSection.appendChild(el("h3", {}, "Next time"));
+  let hasRecs = false;
+  sm.exerciseStats.forEach(s => {
+    if (s.rpe == null) return;
+    let msg = null, cls = "rec";
+    if (s.totalReps < s.plannedReps * 0.85) {
+      msg = `<strong>${s.name}:</strong> only ${s.totalReps}/${s.plannedReps} reps — recover better or back off load`;
+      cls = "rec bad";
+    } else if (s.rpe <= 7) {
+      msg = `<strong>${s.name}:</strong> RPE ${s.rpe.toFixed(1)} — add +1 rep on top set${s.load > 0 ? ", or +10 lb next week" : ""}`;
+      cls = "rec good";
+    } else if (s.rpe >= 8.5) {
+      msg = `<strong>${s.name}:</strong> RPE ${s.rpe.toFixed(1)} — hold this load and reps next session`;
+      cls = "rec warn";
+    }
+    if (msg) { recSection.appendChild(el("div", { class: cls, html: msg })); hasRecs = true; }
+  });
+  if (!hasRecs) recSection.appendChild(el("div", { class: "rec" }, "Clean execution across the board — repeat this prescription next session."));
+  body.appendChild(recSection);
+
+  // Overall judgment
+  if (sm.overallRpe) {
+    const judgment = sm.overallRpe <= 7 ? "Easy day — meaningful room left in the tank."
+                   : sm.overallRpe <= 8 ? "Solid effort on target."
+                   : sm.overallRpe <= 9 ? "Hard session — consider sleep and recovery before next workout."
+                   : "Very hard — back off intensity or pull the deload forward.";
+    body.appendChild(el("div", { class: "summary-overall" }, judgment));
+  }
+
+  // Show modal
+  $("#summary-modal").classList.remove("hidden");
+}
+
+function advanceToNextSession() {
+  if (!pendingFinishedSession) return;
+  const s = pendingFinishedSession;
   let nextDay = s.day + 1, nextWeek = s.week;
   if (nextDay > 4) { nextDay = 1; nextWeek = Math.min(PROGRAM.endWeek, nextWeek + 1); }
   state.active = newSession(nextWeek, nextDay);
   persistActive();
   $("#session-notes").value = "";
-  cancelRest();
-  toast("Session saved — next: W" + nextWeek + " D" + nextDay);
+  $("#summary-modal").classList.add("hidden");
+  pendingFinishedSession = null;
+  toast("Next: W" + nextWeek + " D" + nextDay);
   renderSelectors(); renderHeader(); renderSessionInfo(); renderWarmup(); renderExercises();
+}
+
+$("#summary-continue").addEventListener("click", advanceToNextSession);
+$("#summary-dismiss").addEventListener("click", advanceToNextSession);
+$("#summary-backdrop").addEventListener("click", advanceToNextSession);
+$("#summary-copy").addEventListener("click", () => {
+  if (!pendingFinishedSession) return;
+  copyToClipboard("WORKOUT EXPORT\n" + JSON.stringify(pendingFinishedSession, null, 2));
 });
 $("#btn-copy-last").addEventListener("click", () => {
   if (state.history.length === 0) { alert("No sessions yet."); return; }
