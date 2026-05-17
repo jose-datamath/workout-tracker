@@ -39,9 +39,12 @@
     padding: 10px 14px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
     margin-bottom: 12px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 10; }
   .top h1 { font-size: 16px; margin: 0; font-weight: 600; }
-  .top .vol { text-align: right; font-variant-numeric: tabular-nums; }
-  .top .vol .big { font-size: 22px; font-weight: 700; color: var(--accent); }
-  .top .vol .sm { font-size: 11px; color: var(--muted); }
+  .top .stats-right { display: flex; gap: 12px; align-items: center; }
+  .top .vol, .top .time { text-align: right; font-variant-numeric: tabular-nums; }
+  .top .vol .big { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .top .time .big { font-size: 20px; font-weight: 700; color: var(--accent-2); }
+  .top .time .big.over { color: var(--bad); }
+  .top .vol .sm, .top .time .sm { font-size: 11px; color: var(--muted); }
   nav.tabs { display: flex; gap: 4px; margin-bottom: 12px; overflow-x: auto; }
   nav.tabs button { flex: 1 1 auto; min-width: 80px; padding: 10px 12px; background: var(--panel);
     color: var(--muted); border: 1px solid var(--border); border-radius: var(--radius);
@@ -60,10 +63,24 @@
   select.sel, input.in { background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
     border-radius: 6px; padding: 8px 10px; font-size: 14px; }
   select.sel:focus, input.in:focus { outline: 2px solid var(--accent-2); outline-offset: -1px; }
-  .session-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+  .session-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
   .session-meta strong { color: var(--text); }
 
-  /* Exercise cards (solo and pair) */
+  /* Warm-up panel */
+  .warmup-panel { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; margin-bottom: 12px; }
+  .warmup-head { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .warmup-head h3 { margin: 0; font-size: 12px; }
+  .warmup-body { margin-top: 10px; }
+  .warmup-body.collapsed { display: none; }
+  .warmup-drill { display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    border-bottom: 1px dashed var(--border); font-size: 13px; }
+  .warmup-drill:last-child { border-bottom: none; }
+  .warmup-drill input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent-2); }
+  .warmup-drill .name { flex: 1; }
+  .warmup-drill .time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+  /* Block cards */
   .block { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
     padding: 12px; margin-bottom: 12px; position: relative; }
   .block.pair { border-color: var(--accent-2); }
@@ -73,7 +90,8 @@
   .block-label.solo { background: var(--panel); color: var(--muted); border: 1px solid var(--border); }
   .block-label.pair { background: var(--accent-2); color: white; }
   .block-rest-meta { font-size: 11px; color: var(--muted); position: absolute; top: -8px; right: 12px;
-    background: var(--panel); padding: 2px 8px; border-radius: 8px; border: 1px solid var(--border); }
+    background: var(--panel); padding: 2px 8px; border-radius: 8px; border: 1px solid var(--border);
+    font-variant-numeric: tabular-nums; }
   .sub-exercise { padding-top: 8px; }
   .sub-exercise + .sub-exercise { border-top: 1px dashed var(--border); margin-top: 8px; padding-top: 10px; }
   .sub-label { display: inline-block; background: var(--accent-2); color: white;
@@ -110,11 +128,13 @@
   .ex-vol { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; font-size: 13px; }
 
   .block-actions { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px;
-    border-top: 1px solid var(--border); }
+    border-top: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
   .rest-btn { flex: 1; padding: 10px; background: var(--accent-2); color: white; border: none;
-    border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; }
+    border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; min-width: 120px; }
   .rest-btn:hover { filter: brightness(1.1); }
-  .rest-btn-secondary { background: var(--panel); color: var(--accent-2); border: 1px solid var(--accent-2); }
+  .rest-btn-secondary { background: var(--panel); color: var(--accent-2); border: 1px solid var(--accent-2); flex: 0 0 auto; }
+  .block-eta { font-size: 11px; color: var(--muted); flex: 0 0 100%; text-align: right; margin-top: 2px;
+    font-variant-numeric: tabular-nums; }
 
   /* Floating rest timer */
   .rest-timer { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -186,9 +206,15 @@
       <h1 id="header-title">Workout Tracker</h1>
       <div class="session-meta" id="header-meta"></div>
     </div>
-    <div class="vol">
-      <div class="big" id="header-vol">0</div>
-      <div class="sm">lbs · this session</div>
+    <div class="stats-right">
+      <div class="time">
+        <div class="big" id="header-time">0:00</div>
+        <div class="sm">elapsed</div>
+      </div>
+      <div class="vol">
+        <div class="big" id="header-vol">0</div>
+        <div class="sm">lbs · this session</div>
+      </div>
     </div>
   </header>
 
@@ -222,6 +248,14 @@
       <div class="session-meta" id="session-info" style="margin-top:10px"></div>
     </div>
 
+    <div class="warmup-panel">
+      <div class="warmup-head" id="warmup-head">
+        <h3>Pre-workout (4 min) — tap to expand</h3>
+        <span id="warmup-status" style="font-size:12px;color:var(--muted);">0 / 4</span>
+      </div>
+      <div class="warmup-body collapsed" id="warmup-body"></div>
+    </div>
+
     <div id="exercise-list"></div>
 
     <div class="panel">
@@ -245,9 +279,9 @@
     <div class="panel">
       <h2>Block 3 — Volume PR Block</h2>
       <p style="color:var(--muted);font-size:13px;margin:6px 0 12px">
-        Goal: beat your 71,280 lb weekly tonnage PR. We add a set to main lifts in Upper A and Lower A,
-        keep Upper B's structure (already volume-dense), and add a 4th main movement to Lower B.
-        Antagonist supersets keep session time at ~60 min; rest times per block shown below.
+        Goal: beat your 71,280 lb weekly tonnage PR while staying under 60 min per session.
+        Heavy compounds paired with low-systemic-load partners (calf, core) to compress time without losing volume.
+        Anti-rotation core (Pallof) replaces loaded crunches per X-ray findings. RPE targets capped at ≤7 for "push" signals.
       </p>
       <div id="plan-list"></div>
     </div>
@@ -273,7 +307,7 @@
       <h2>Sync to Excel</h2>
       <p style="color:var(--muted);font-size:13px">
         After each session: tap <strong>Copy session</strong> and paste it to Claude in the Coach project.
-        Claude will append it to your master <em>Workout History.xlsx</em>. Or use <strong>Download CSV</strong> for offline backup.
+        Claude will append it to your master <em>Workout History.xlsx</em>.
       </p>
       <div class="actions">
         <button class="btn" id="btn-copy-last">Copy last session</button>
@@ -296,7 +330,6 @@
   </section>
 </div>
 
-<!-- Floating rest timer -->
 <div id="rest-timer" class="rest-timer hidden">
   <div class="rest-timer-info">
     <div class="rest-timer-label" id="rest-timer-label">Rest</div>
@@ -311,27 +344,34 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
 /* ============================================================
-   BLOCK 3 PROGRAM — organized into blocks (solo or superset pairs).
-   Volume convention: load_mult applied to (weight × reps).
-     2 = two-DB lift (counts both DBs in load_total)
-     1 = single-DB or single-cable lift (lat pulldown, goblet, OH tri ext, calf, crunch)
-     0 = bodyweight / band
-   restSec is the prescribed rest AFTER completing one full round of the block.
+   BLOCK 3 — Volume PR Block, optimized for 60-min cap & health
+   ============================================================
+   - Heavy compounds paired with low-systemic-load partners
+   - Pallof Press replaces Weighted Crunch (X-ray: flat lordosis)
+   - Bird Dog added in Lower A (anti-extension + posterior chain)
+   - W22 retagged Peak (was Overreach) per health framing
+   - RPE 7 is the "push" threshold; ≥8.5 is "back off"
 ============================================================ */
 const PROGRAM = {
   name: "Block 3 — Volume PR Block",
   blockNum: 3,
   startWeek: 18,
   endWeek: 23,
-  weeklyTargets: { 18: 75000, 19: 78000, 20: 80000, 21: 82000, 22: 84000, 23: 30000 },
+  weeklyTargets: { 18: 72000, 19: 75000, 20: 78000, 21: 80000, 22: 80000, 23: 30000 },
   weeklyPhase: {
-    18: "Re-entry — hit top reps, lower sets at RPE 7-8",
-    19: "Build — match top sets, push +1 rep on lower sets",
-    20: "Progression — +1 rep on top set if RPE ≤8 last week",
-    21: "Peak — +1 rep all sets if RPE ≤8 last week",
-    22: "Overreach — +1-2 reps top set OR +10 lb on lifts at RPE ≤7",
-    23: "Deload — drop volume ~60%, 2 sets per main lift, low RPE",
+    18: "Re-entry — hit top reps, lower sets at RPE 6-7",
+    19: "Build — push +1 rep on lower sets if RPE ≤7",
+    20: "Progression — +1 rep on top set if RPE ≤7 last week",
+    21: "Peak — match Week 20 with cleaner reps",
+    22: "Peak — fresh PR week, RPE 7-8 max",
+    23: "Deload — drop volume ~60%, RPE 5-6, recovery focus",
   },
+  warmup: [
+    { name: "Hip flexor stretch (couch / kneeling lunge)", time: "60s/side" },
+    { name: "Cat-cow", time: "8 slow reps" },
+    { name: "Thoracic extension over roller/bench", time: "60s" },
+    { name: "Hamstring stretch", time: "45s/side" }
+  ],
   sessions: {
     "Upper A": {
       blocks: [
@@ -347,26 +387,27 @@ const PROGRAM = {
           { name: "DB Curl", load: 30, unit: "lbs", load_mult: 2, sets: 4, planReps: [12,11,9,8] },
           { name: "OH Triceps Extension", load: 30, unit: "lbs", load_mult: 1, sets: 4, planReps: [15,14,13,12] }
         ]},
-        { type: "solo", restSec: 45, exercises: [
-          { name: "Weighted Crunch", load: 30, unit: "lbs", load_mult: 1, sets: 3, planReps: [32,30,28] }
+        { type: "solo", restSec: 30, exercises: [
+          { name: "Pallof Press", load: 0, unit: "band", load_mult: 0, sets: 3, planReps: [12,12,12], note: "per side" }
         ]}
       ]
     },
     "Lower A": {
       blocks: [
-        { type: "solo", restSec: 150, exercises: [
-          { name: "DB Squat", load: 70, unit: "lbs", load_mult: 2, sets: 5, planReps: [12,11,10,9,9] }
+        { type: "pair", label: "A", restSec: 120, exercises: [
+          { name: "DB Squat", load: 70, unit: "lbs", load_mult: 2, sets: 5, planReps: [12,11,10,9,9] },
+          { name: "Hollow Hold", load: 0, unit: "sec", load_mult: 0, sets: 5, planReps: [40,35,30,25,20] }
         ]},
-        { type: "solo", restSec: 120, exercises: [
-          { name: "Romanian Deadlift", load: 80, unit: "lbs", load_mult: 2, sets: 4, planReps: [12,12,11,10] }
-        ]},
-        { type: "pair", label: "A", restSec: 75, exercises: [
-          { name: "Goblet Squat", load: 90, unit: "lbs", load_mult: 1, sets: 4, planReps: [10,10,10,8] },
+        { type: "pair", label: "B", restSec: 90, exercises: [
+          { name: "Romanian Deadlift", load: 80, unit: "lbs", load_mult: 2, sets: 4, planReps: [12,12,11,10] },
           { name: "Standing Calf Raise", load: 70, unit: "lbs", load_mult: 1, sets: 4, planReps: [22,20,18,16] }
         ]},
-        { type: "pair", label: "B", restSec: 30, exercises: [
-          { name: "Hollow Hold", load: 0, unit: "sec", load_mult: 0, sets: 3, planReps: [45,40,35] },
-          { name: "Dead Bug", load: 0, unit: "BW", load_mult: 0, sets: 3, planReps: [30,30,30] }
+        { type: "pair", label: "C", restSec: 60, exercises: [
+          { name: "Goblet Squat", load: 90, unit: "lbs", load_mult: 1, sets: 4, planReps: [10,10,10,8] },
+          { name: "Pallof Press", load: 0, unit: "band", load_mult: 0, sets: 4, planReps: [12,12,12,12], note: "per side" }
+        ]},
+        { type: "solo", restSec: 30, exercises: [
+          { name: "Bird Dog", load: 0, unit: "BW", load_mult: 0, sets: 3, planReps: [10,10,10], note: "per side, slow" }
         ]}
       ]
     },
@@ -386,7 +427,7 @@ const PROGRAM = {
         ]},
         { type: "pair", label: "D", restSec: 30, exercises: [
           { name: "Face Pull", load: 0, unit: "band", load_mult: 0, sets: 3, planReps: [15,15,15] },
-          { name: "Weighted Crunch", load: 30, unit: "lbs", load_mult: 1, sets: 3, planReps: [32,30,28] }
+          { name: "Pallof Press", load: 0, unit: "band", load_mult: 0, sets: 3, planReps: [12,12,12], note: "per side" }
         ]}
       ]
     },
@@ -394,7 +435,7 @@ const PROGRAM = {
       blocks: [
         { type: "pair", label: "A", restSec: 90, exercises: [
           { name: "Goblet Squat", load: 90, unit: "lbs", load_mult: 1, sets: 4, planReps: [10,10,10,8] },
-          { name: "Hollow Hold", load: 0, unit: "sec", load_mult: 0, sets: 4, planReps: [45,40,35,30] }
+          { name: "Hollow Hold", load: 0, unit: "sec", load_mult: 0, sets: 4, planReps: [40,35,30,30] }
         ]},
         { type: "pair", label: "B", restSec: 90, exercises: [
           { name: "Romanian Deadlift", load: 70, unit: "lbs/hand", load_mult: 2, sets: 4, planReps: [12,10,10,10] },
@@ -402,7 +443,7 @@ const PROGRAM = {
         ]},
         { type: "pair", label: "C", restSec: 60, exercises: [
           { name: "Reverse Lunge", load: 50, unit: "lbs", load_mult: 2, sets: 3, planReps: [10,10,10] },
-          { name: "Standing Calf Raise", load: 70, unit: "lbs", load_mult: 1, sets: 4, planReps: [22,20,18,16] }
+          { name: "Standing Calf Raise", load: 70, unit: "lbs", load_mult: 1, sets: 3, planReps: [22,20,18] }
         ]}
       ]
     }
@@ -415,7 +456,6 @@ const PROGRAM = {
   ]
 };
 
-// Build a flat exercises list for storage (from blocks)
 function flattenExercises(sessionName) {
   const def = PROGRAM.sessions[sessionName];
   const list = [];
@@ -423,7 +463,18 @@ function flattenExercises(sessionName) {
   return list;
 }
 
-// Historical weekly totals
+// Estimated time for a block in seconds
+function blockTimeEstimate(block) {
+  const setTime = 30; // avg work seconds per set
+  const sets = Math.max(...block.exercises.map(e => e.sets));
+  if (block.type === "pair") {
+    // per round: 2 exercises (set + set) + rest
+    return sets * (setTime * 2 + block.restSec) - block.restSec;
+  } else {
+    return sets * (setTime + block.restSec) - block.restSec;
+  }
+}
+
 const HISTORY_WEEKLY = [
   { week: 2, vol: 48600 },{ week: 3, vol: 57180 },{ week: 4, vol: 62700 },
   { week: 5, vol: 68380 },{ week: 6, vol: 53900 },{ week: 7, vol: 52000 },
@@ -433,7 +484,6 @@ const HISTORY_WEEKLY = [
   { week: 17, vol: 28200 }
 ];
 
-// Historical last-session reference
 const HISTORY_LAST = {
   "Upper A": {
     "DB Bench Press":       { week: 16, sets: "8/8/6/6", load: "80 lbs" },
@@ -442,15 +492,16 @@ const HISTORY_LAST = {
     "Pull-Ups":             { week: 16, sets: "11/10/8", load: "BW" },
     "DB Curl":              { week: 16, sets: "12/11/9", load: "30 lbs" },
     "OH Triceps Extension": { week: 16, sets: "15/14/13", load: "30 lbs" },
-    "Weighted Crunch":      { week: 16, sets: "32/30/28", load: "30 lbs" }
+    "Pallof Press":         { week: null, sets: "—", load: "(new in Block 3)" }
   },
   "Lower A": {
     "DB Squat":            { week: 16, sets: "12/11/10/10", load: "70 lbs" },
-    "Romanian Deadlift":   { week: 16, sets: "12/12/11", load: "80 lbs" },
-    "Goblet Squat":        { week: 16, sets: "10/10/10", load: "90 lbs" },
-    "Standing Calf Raise": { week: 16, sets: "22/20/18", load: "70 lbs" },
     "Hollow Hold":         { week: 16, sets: "45/40/35", load: "BW" },
-    "Dead Bug":            { week: 16, sets: "—", load: "(new in Block 3)" }
+    "Romanian Deadlift":   { week: 16, sets: "12/12/11", load: "80 lbs" },
+    "Standing Calf Raise": { week: 16, sets: "22/20/18", load: "70 lbs" },
+    "Goblet Squat":        { week: 16, sets: "10/10/10", load: "90 lbs" },
+    "Pallof Press":        { week: null, sets: "—", load: "(new in Block 3)" },
+    "Bird Dog":            { week: null, sets: "—", load: "(new in Block 3)" }
   },
   "Upper B": {
     "Incline DB Press":    { week: 16, sets: "14/13/12", load: "60 lbs" },
@@ -460,21 +511,19 @@ const HISTORY_LAST = {
     "Lateral Raise":       { week: 16, sets: "18/17/16", load: "20 lbs" },
     "Preacher Curl":       { week: 16, sets: "14/13/12", load: "20 lbs" },
     "Face Pull":           { week: 16, sets: "15/15/15", load: "band" },
-    "Weighted Crunch":     { week: 16, sets: "32/30/28", load: "30 lbs" }
+    "Pallof Press":        { week: null, sets: "—", load: "(new in Block 3)" }
   },
   "Lower B": {
     "Goblet Squat":        { week: 16, sets: "10/9/8", load: "90 lbs" },
+    "Hollow Hold":         { week: 16, sets: "45/40/35", load: "BW" },
     "Romanian Deadlift":   { week: 16, sets: "12/10/10", load: "70 lbs/hand" },
+    "Dead Bug":            { week: 16, sets: "30/30/30", load: "BW" },
     "Reverse Lunge":       { week: 4, sets: "8/8/8", load: "50 lbs" },
-    "Standing Calf Raise": { week: 16, sets: "20/18/16", load: "70 lbs" },
-    "Hollow Hold":         { week: 16, sets: "—", load: "BW" },
-    "Dead Bug":            { week: 16, sets: "30/30/30", load: "BW" }
+    "Standing Calf Raise": { week: 16, sets: "20/18/16", load: "70 lbs" }
   }
 };
 
-/* ============================================================
-   STATE & STORAGE
-============================================================ */
+/* STATE */
 const STORAGE_KEY = "workout_tracker_v1";
 const ACTIVE_KEY  = "workout_tracker_v1_active";
 
@@ -484,34 +533,28 @@ function loadActive() { try { return JSON.parse(localStorage.getItem(ACTIVE_KEY)
 function saveActive(s) { localStorage.setItem(ACTIVE_KEY, JSON.stringify(s)); }
 function clearActive() { localStorage.removeItem(ACTIVE_KEY); }
 
-let state = {
-  active: loadActive() || newSession(18, 1),
-  history: loadAll()
-};
+let state = { active: loadActive() || newSession(18, 1), history: loadAll() };
 
 function newSession(week, day) {
   const template = PROGRAM.weekTemplate.find(t => t.day === day);
   const sessionName = template ? template.session : "Upper A";
   const exList = flattenExercises(sessionName);
   return {
-    week, day,
-    session: sessionName,
-    date: todayISO(),
+    week, day, session: sessionName, date: todayISO(),
     exercises: exList.map(e => ({
       name: e.name, load: e.load, unit: e.unit, load_mult: e.load_mult,
       planReps: e.planReps.slice(),
       sets: e.planReps.map(() => ({ weight: e.load, reps: "", rpe: "", note: "" })),
-      note: ""
+      note: e.note || ""
     })),
-    notes: "",
-    finished: false
+    notes: "", finished: false,
+    startedAt: null, finishedAt: null,
+    warmupDone: [false, false, false, false]
   };
 }
 function todayISO() { return new Date().toISOString().slice(0,10); }
 
-/* ============================================================
-   DOM HELPERS
-============================================================ */
+/* DOM HELPERS */
 function $(s, el = document) { return el.querySelector(s); }
 function $$(s, el = document) { return [...el.querySelectorAll(s)]; }
 function el(tag, attrs = {}, children = []) {
@@ -536,10 +579,9 @@ function fmtTime(sec) {
   const s = String(abs % 60).padStart(2, "0");
   return `${sign}${m}:${s}`;
 }
+function fmtMin(sec) { return `~${Math.round(sec/60)} min`; }
 
-/* ============================================================
-   VOLUME CALC
-============================================================ */
+/* VOLUME */
 function setVolume(ex) {
   return ex.sets.reduce((acc, s) => {
     const w = parseFloat(s.weight) || 0;
@@ -560,11 +602,27 @@ function rpeClass(v) {
   return "rpe-high";
 }
 
-/* ============================================================
-   REST TIMER
-============================================================ */
-let restTimer = { active: false, secondsLeft: 0, totalSeconds: 0, intervalId: null, label: "" };
+/* SESSION TIMER */
+function ensureSessionStarted() {
+  if (!state.active.startedAt) {
+    state.active.startedAt = Date.now();
+    persistActive();
+  }
+}
+function elapsedSec() {
+  if (!state.active.startedAt) return 0;
+  return Math.floor((Date.now() - state.active.startedAt) / 1000);
+}
+function updateElapsedUI() {
+  const elem = $("#header-time");
+  const sec = elapsedSec();
+  elem.textContent = fmtTime(sec);
+  elem.classList.toggle("over", sec > 60*60);
+}
+setInterval(updateElapsedUI, 1000);
 
+/* REST TIMER */
+let restTimer = { active: false, secondsLeft: 0, totalSeconds: 0, intervalId: null, label: "" };
 function startRest(seconds, label = "Rest") {
   cancelRest();
   restTimer.active = true;
@@ -616,16 +674,11 @@ function beep() {
     });
   } catch (e) {}
 }
-// Prime audio on first interaction
 document.addEventListener("click", () => {
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
-  }
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} }
 }, { once: true });
 
-/* ============================================================
-   RENDERING — TODAY
-============================================================ */
+/* RENDERING */
 function renderHeader() {
   const s = state.active;
   $("#header-title").textContent = `W${s.week} D${s.day} — ${s.session}`;
@@ -660,27 +713,51 @@ function renderSessionInfo() {
   const info = $("#session-info");
   info.innerHTML = "";
   info.appendChild(el("span", { html: `<strong>Date:</strong> ${s.date}` }));
+  const def = PROGRAM.sessions[s.session];
+  const estSec = def.blocks.reduce((a, b) => a + blockTimeEstimate(b), 0) + 240; // + 4 min warm-up
+  info.appendChild(el("span", { html: `<strong>Est. duration:</strong> ${fmtMin(estSec)}` }));
   if (lastLog) {
     info.appendChild(el("span", { html: `<strong>Last ${s.session}:</strong> W${lastLog.week} — ${fmtNum(lastLog.totalVolume||sessionVolume(lastLog))} lbs` }));
   }
 }
+
+function renderWarmup() {
+  const body = $("#warmup-body");
+  body.innerHTML = "";
+  if (!state.active.warmupDone) state.active.warmupDone = [false,false,false,false];
+  PROGRAM.warmup.forEach((d, i) => {
+    const row = el("div", { class: "warmup-drill" });
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = !!state.active.warmupDone[i];
+    cb.addEventListener("change", e => {
+      state.active.warmupDone[i] = e.target.checked;
+      persistActive();
+      updateWarmupStatus();
+    });
+    row.appendChild(cb);
+    row.appendChild(el("span", { class: "name" }, d.name));
+    row.appendChild(el("span", { class: "time" }, d.time));
+    body.appendChild(row);
+  });
+  updateWarmupStatus();
+}
+function updateWarmupStatus() {
+  const done = (state.active.warmupDone || []).filter(Boolean).length;
+  $("#warmup-status").textContent = `${done} / ${PROGRAM.warmup.length}`;
+}
+$("#warmup-head").addEventListener("click", () => {
+  $("#warmup-body").classList.toggle("collapsed");
+});
 
 function renderExercises() {
   const wrap = $("#exercise-list");
   wrap.innerHTML = "";
   const s = state.active;
   const def = PROGRAM.sessions[s.session];
-
-  // Map exercise names to active session indices so set inputs bind correctly
-  const nameToIdx = {};
-  s.exercises.forEach((ex, i) => { nameToIdx[ex.name + "::" + i] = i; });
   let cursor = 0;
-
   def.blocks.forEach(block => {
     const indices = block.exercises.map(() => cursor++);
-    const card = (block.type === "pair")
-      ? renderPairCard(block, indices)
-      : renderSoloCard(block, indices);
+    const card = (block.type === "pair") ? renderPairCard(block, indices) : renderSoloCard(block, indices);
     wrap.appendChild(card);
   });
   updateExerciseVolumes();
@@ -699,7 +776,7 @@ function renderSoloCard(block, indices) {
 function renderPairCard(block, indices) {
   const card = el("div", { class: "block pair" });
   card.appendChild(el("span", { class: "block-label pair" }, `Superset ${block.label}`));
-  card.appendChild(el("span", { class: "block-rest-meta" }, `Rest ${block.restSec}s after round`));
+  card.appendChild(el("span", { class: "block-rest-meta" }, `Rest ${block.restSec}s`));
   indices.forEach((exIdx, i) => {
     const ex = state.active.exercises[exIdx];
     const sub = el("div", { class: "sub-exercise" });
@@ -714,8 +791,9 @@ function renderExerciseSection(ex, exIdx, subLabel) {
   const wrap = document.createDocumentFragment();
   const s = state.active;
   const last = (HISTORY_LAST[s.session] && HISTORY_LAST[s.session][ex.name]) || null;
-  const planTxt = `Plan: ${ex.load > 0 ? ex.load + " " + ex.unit + " · " : ""}${ex.planReps.join("/")}`;
-  const lastTxt = last ? `Last time (W${last.week}): ${last.load} · ${last.sets}` : "First time logged";
+  const planTxt = `Plan: ${ex.load > 0 ? ex.load + " " + ex.unit + " · " : ""}${ex.planReps.join("/")}${ex.note ? " · " + ex.note : ""}`;
+  const lastTxt = last && last.week ? `Last time (W${last.week}): ${last.load} · ${last.sets}`
+                 : last ? `${last.load}` : "First time logged";
 
   const head = el("div", { class: "exercise-head" }, [
     el("div", {}, [
@@ -738,17 +816,14 @@ function renderExerciseSection(ex, exIdx, subLabel) {
     el("div", { class: "head" }, "RPE"),
     el("div", {})
   ]));
-  ex.sets.forEach((set, setIdx) => {
-    setsWrap.appendChild(renderSetRow(exIdx, setIdx));
-  });
+  ex.sets.forEach((set, setIdx) => setsWrap.appendChild(renderSetRow(exIdx, setIdx)));
   wrap.appendChild(setsWrap);
 
   wrap.appendChild(el("button", {
     class: "add-set",
     onclick: () => {
       ex.sets.push({ weight: ex.load, reps: "", rpe: "", note: "" });
-      persistActive();
-      renderExercises();
+      persistActive(); renderExercises();
     }
   }, "+ Add set"));
 
@@ -771,12 +846,20 @@ function renderSetRow(exIdx, setIdx) {
 
   const wIn = el("input", { type: "number", inputmode: "decimal", step: "0.5", placeholder: "lb" });
   wIn.value = set.weight ?? "";
-  wIn.addEventListener("input", e => { set.weight = e.target.value; onSetChange(exIdx); });
+  wIn.addEventListener("input", e => {
+    set.weight = e.target.value;
+    ensureSessionStarted();
+    onSetChange(exIdx);
+  });
   row.appendChild(wIn);
 
   const rIn = el("input", { type: "number", inputmode: "numeric", step: "1", placeholder: planRep != null ? String(planRep) : "reps" });
   rIn.value = set.reps ?? "";
-  rIn.addEventListener("input", e => { set.reps = e.target.value; onSetChange(exIdx); });
+  rIn.addEventListener("input", e => {
+    set.reps = e.target.value;
+    ensureSessionStarted();
+    onSetChange(exIdx);
+  });
   row.appendChild(rIn);
 
   const rpeIn = el("input", { type: "number", inputmode: "decimal", step: "0.5", min: "1", max: "10", placeholder: "RPE" });
@@ -791,9 +874,7 @@ function renderSetRow(exIdx, setIdx) {
 
   const del = el("button", {
     class: "icon-btn", title: "Remove set",
-    onclick: () => {
-      ex.sets.splice(setIdx, 1); persistActive(); renderExercises();
-    }
+    onclick: () => { ex.sets.splice(setIdx, 1); persistActive(); renderExercises(); }
   }, "×");
   row.appendChild(del);
   return row;
@@ -801,26 +882,24 @@ function renderSetRow(exIdx, setIdx) {
 
 function renderBlockActions(block) {
   const wrap = el("div", { class: "block-actions" });
-  const label = block.type === "pair" ? `Rest ${block.restSec}s` : `Rest ${block.restSec}s`;
   const lbl = block.type === "pair"
     ? `Superset ${block.label} — rest ${block.restSec}s`
     : `${block.exercises[0].name} — rest ${block.restSec}s`;
   wrap.appendChild(el("button", {
     class: "rest-btn",
-    onclick: () => startRest(block.restSec, lbl)
+    onclick: () => { ensureSessionStarted(); startRest(block.restSec, lbl); }
   }, `Start rest ${block.restSec}s`));
   if (block.restSec >= 90) {
     wrap.appendChild(el("button", {
       class: "rest-btn rest-btn-secondary",
-      onclick: () => startRest(Math.round(block.restSec * 0.66), lbl + " (short)")
+      onclick: () => { ensureSessionStarted(); startRest(Math.round(block.restSec * 0.66), lbl + " (short)"); }
     }, `Short ${Math.round(block.restSec * 0.66)}s`));
   }
+  wrap.appendChild(el("div", { class: "block-eta" }, `Block estimate: ${fmtMin(blockTimeEstimate(block))}`));
   return wrap;
 }
 
-function onSetChange(exIdx) {
-  persistActive(); updateExerciseVolumes(); renderHeader();
-}
+function onSetChange(exIdx) { persistActive(); updateExerciseVolumes(); renderHeader(); }
 function updateExerciseVolumes() {
   state.active.exercises.forEach((ex, i) => {
     const node = document.getElementById(`vol-${i}`);
@@ -829,9 +908,7 @@ function updateExerciseVolumes() {
 }
 function persistActive() { saveActive(state.active); }
 
-/* ============================================================
-   TAB SWITCHING
-============================================================ */
+/* TABS */
 $$("nav.tabs button").forEach(b => {
   b.addEventListener("click", () => {
     $$("nav.tabs button").forEach(x => x.classList.remove("active"));
@@ -846,9 +923,7 @@ $$("nav.tabs button").forEach(b => {
   });
 });
 
-/* ============================================================
-   HISTORY
-============================================================ */
+/* HISTORY */
 function renderHistory() {
   const list = $("#history-list");
   list.innerHTML = "";
@@ -860,10 +935,13 @@ function renderHistory() {
   sorted.forEach(sess => {
     const card = el("div", { class: "history-item" });
     card.addEventListener("click", () => card.classList.toggle("open"));
+    const dur = (sess.startedAt && sess.finishedAt)
+      ? Math.round((sess.finishedAt - sess.startedAt)/60000) + " min"
+      : "";
     card.appendChild(el("div", { class: "history-head" }, [
       el("div", {}, [
         el("div", { class: "history-title" }, `W${sess.week} D${sess.day} — ${sess.session}`),
-        el("div", { class: "history-date" }, sess.date)
+        el("div", { class: "history-date" }, `${sess.date}${dur ? " · " + dur : ""}`)
       ]),
       el("div", { class: "history-vol" }, `${fmtNum(sess.totalVolume || sessionVolume(sess))} lbs`)
     ]));
@@ -882,9 +960,7 @@ function renderHistory() {
   });
 }
 
-/* ============================================================
-   PLAN
-============================================================ */
+/* PLAN */
 function renderPlan() {
   const list = $("#plan-list");
   list.innerHTML = "";
@@ -902,15 +978,15 @@ function renderPlan() {
         const prefix = b.type === "pair" ? `SS-${b.label}` : "Solo";
         return `[${prefix}, rest ${b.restSec}s] ${exList}`;
       }).join(" │ ");
-      card.appendChild(el("div", { class: "plan-session" }, `Day ${t.day} — ${t.session}: ${blocks}`));
+      const totalSec = def.blocks.reduce((a, b) => a + blockTimeEstimate(b), 0) + 240;
+      card.appendChild(el("div", { class: "plan-session" },
+        `Day ${t.day} — ${t.session} (${fmtMin(totalSec)}): ${blocks}`));
     });
     list.appendChild(card);
   }
 }
 
-/* ============================================================
-   INSIGHTS
-============================================================ */
+/* INSIGHTS */
 let volChart = null;
 function renderInsights() { drawVolumeChart(); renderRecommendations(); renderLiftStats(); }
 
@@ -961,10 +1037,22 @@ function renderRecommendations() {
   }
   const last = state.history[state.history.length - 1];
   const lastVol = last.totalVolume || sessionVolume(last);
+  const dur = (last.startedAt && last.finishedAt) ? Math.round((last.finishedAt - last.startedAt)/60000) : null;
   wrap.appendChild(el("div", { class: "insight good" }, [
     el("strong", {}, `Last session — W${last.week} D${last.day} ${last.session}: `),
-    `${fmtNum(lastVol)} lbs total.`
+    `${fmtNum(lastVol)} lbs${dur ? `, ${dur} min` : ""}.`
   ]));
+
+  // Deload signal: 3+ exercises at RPE ≥9
+  const highRPECount = last.exercises.filter(ex => {
+    const r = avgRPE(ex); return r != null && r >= 9;
+  }).length;
+  if (highRPECount >= 3) {
+    wrap.appendChild(el("div", { class: "insight bad", html:
+      `<strong>Deload signal:</strong> ${highRPECount} exercises at avg RPE 9+. Consider pulling next deload forward, or hold loads this week.`
+    }));
+  }
+
   last.exercises.forEach(ex => {
     const rpe = avgRPE(ex);
     if (rpe == null) return;
@@ -974,8 +1062,8 @@ function renderRecommendations() {
     let cls = "insight", msg = "";
     if (rpe <= 7) {
       cls += " good";
-      msg = `<strong>${ex.name}</strong> avg RPE ${rpe.toFixed(1)} — room to grow. <em>Next session: add 1 rep to top set${ex.load > 0 ? ", or +10 lbs if RPE stays ≤7" : ""}.</em>`;
-    } else if (rpe <= 8.5) {
+      msg = `<strong>${ex.name}</strong> avg RPE ${rpe.toFixed(1)} — room to grow. <em>Next session: +1 rep on top set${ex.load > 0 ? ", or +10 lbs if RPE stays ≤7 next week" : ""}.</em>`;
+    } else if (rpe <= 8) {
       msg = `<strong>${ex.name}</strong> avg RPE ${rpe.toFixed(1)} — on target. <em>Repeat at same load, push +1 rep on lower sets.</em>`;
     } else {
       cls += " warn";
@@ -987,6 +1075,7 @@ function renderRecommendations() {
     }
     wrap.appendChild(el("div", { class: cls, html: msg }));
   });
+
   const weekVol = weeklyVolumes().find(([w]) => w === last.week);
   if (weekVol) {
     const target = PROGRAM.weeklyTargets[last.week];
@@ -997,6 +1086,12 @@ function renderRecommendations() {
         `<strong>Week ${last.week} pace:</strong> ${fmtNum(weekVol[1])} / ${fmtNum(target)} target (${pct.toFixed(0)}%).`
       }));
     }
+  }
+
+  if (dur && dur > 65) {
+    wrap.appendChild(el("div", { class: "insight warn", html:
+      `<strong>Session ran long</strong> (${dur} min vs 60 min cap). Trim rest by 15s on supersets next time, or drop the final set on accessories.`
+    }));
   }
 }
 
@@ -1036,22 +1131,21 @@ function renderLiftStats() {
   wrap.appendChild(tbl);
 }
 
-/* ============================================================
-   EXPORT
-============================================================ */
+/* EXPORT */
 function renderExport() {
   const pre = $("#export-preview");
   if (state.history.length === 0) { pre.textContent = "No sessions logged yet."; return; }
   pre.textContent = JSON.stringify(state.history[state.history.length - 1], null, 2);
 }
 function toCSV(sessions) {
-  const rows = [["Week","Day","Date","Session","Exercise","Load","Unit","Set","Weight","Reps","RPE","Volume","Note","SessionNotes"]];
+  const rows = [["Week","Day","Date","Session","Exercise","Load","Unit","Set","Weight","Reps","RPE","Volume","Note","SessionNotes","Duration_min"]];
   sessions.forEach(s => {
+    const dur = (s.startedAt && s.finishedAt) ? Math.round((s.finishedAt - s.startedAt)/60000) : "";
     s.exercises.forEach(ex => {
       ex.sets.forEach((set, i) => {
         if (!set.reps) return;
         const vol = (parseFloat(set.weight)||0) * ex.load_mult * (parseFloat(set.reps)||0);
-        rows.push([s.week, s.day, s.date, s.session, ex.name, ex.load, ex.unit, i+1, set.weight, set.reps, set.rpe, vol, (set.note||"").replace(/\n/g," "), i === 0 ? (s.notes||"").replace(/\n/g," ") : ""]);
+        rows.push([s.week, s.day, s.date, s.session, ex.name, ex.load, ex.unit, i+1, set.weight, set.reps, set.rpe, vol, (set.note||"").replace(/\n/g," "), i === 0 ? (s.notes||"").replace(/\n/g," ") : "", i === 0 ? dur : ""]);
       });
     });
   });
@@ -1075,9 +1169,7 @@ function toast(msg) {
   setTimeout(() => t.classList.remove("show"), 1800);
 }
 
-/* ============================================================
-   EVENT WIRING
-============================================================ */
+/* EVENTS */
 $("#sel-week").addEventListener("change", e => {
   state.active.week = parseInt(e.target.value, 10);
   persistActive(); renderHeader();
@@ -1091,15 +1183,13 @@ $("#sel-day").addEventListener("change", e => {
   }
   state.active = newSession(state.active.week, newDay);
   state.active.date = $("#sel-date").value || todayISO();
-  persistActive(); renderHeader(); renderSessionInfo(); renderExercises();
+  persistActive(); renderHeader(); renderSessionInfo(); renderWarmup(); renderExercises();
 });
-$("#sel-date").addEventListener("change", e => {
-  state.active.date = e.target.value; persistActive();
-});
+$("#sel-date").addEventListener("change", e => { state.active.date = e.target.value; persistActive(); });
 $("#btn-reset-session").addEventListener("click", () => {
   if (confirm("Reset this session? Logged sets will be cleared.")) {
     state.active = newSession(state.active.week, state.active.day);
-    persistActive(); renderHeader(); renderSessionInfo(); renderExercises();
+    persistActive(); renderHeader(); renderSessionInfo(); renderWarmup(); renderExercises();
   }
 });
 $("#btn-save-draft").addEventListener("click", () => { persistActive(); toast("Saved"); });
@@ -1109,7 +1199,8 @@ $("#btn-finish").addEventListener("click", () => {
   const hasReps = s.exercises.some(ex => ex.sets.some(set => set.reps));
   if (!hasReps) { alert("No sets logged yet."); return; }
   s.finished = true;
-  s.finishedAt = new Date().toISOString();
+  s.finishedAt = Date.now();
+  if (!s.startedAt) s.startedAt = s.finishedAt - 30*60*1000; // fallback 30 min if missing
   s.totalVolume = sessionVolume(s);
   state.history.push(s); saveAll(state.history);
   let nextDay = s.day + 1, nextWeek = s.week;
@@ -1119,7 +1210,7 @@ $("#btn-finish").addEventListener("click", () => {
   $("#session-notes").value = "";
   cancelRest();
   toast("Session saved — next: W" + nextWeek + " D" + nextDay);
-  renderSelectors(); renderHeader(); renderSessionInfo(); renderExercises();
+  renderSelectors(); renderHeader(); renderSessionInfo(); renderWarmup(); renderExercises();
 });
 $("#btn-copy-last").addEventListener("click", () => {
   if (state.history.length === 0) { alert("No sessions yet."); return; }
@@ -1140,7 +1231,7 @@ $("#btn-clear").addEventListener("click", () => {
   if (confirm("Delete ALL logged sessions and the current draft? This cannot be undone.")) {
     state.history = []; saveAll(state.history);
     state.active = newSession(18, 1); clearActive();
-    renderSelectors(); renderHeader(); renderSessionInfo(); renderExercises();
+    renderSelectors(); renderHeader(); renderSessionInfo(); renderWarmup(); renderExercises();
     toast("Data cleared");
   }
 });
@@ -1156,26 +1247,28 @@ $("#file-import").addEventListener("change", async e => {
   } catch (err) { alert("Could not import: " + err.message); }
 });
 
-// Keep timer alive when the tab is hidden by relying on Date arithmetic in a fallback tick
+// Catch-up tick for backgrounded timers
 let lastTickTime = Date.now();
 setInterval(() => {
   if (!restTimer.active) { lastTickTime = Date.now(); return; }
   const now = Date.now();
   const elapsed = Math.floor((now - lastTickTime) / 1000);
   if (elapsed >= 2) {
-    // Catch up if main interval drifted (mobile background throttling)
     for (let i = 0; i < elapsed - 1; i++) tickRest();
     lastTickTime = now;
   }
 }, 1000);
 
-/* ============================================================
-   INIT
-============================================================ */
+/* INIT */
+// If loaded session is missing new fields (warmupDone, startedAt) from older PROGRAM, hydrate
+if (!state.active.warmupDone) state.active.warmupDone = [false,false,false,false];
+
 renderSelectors();
 renderHeader();
 renderSessionInfo();
+renderWarmup();
 renderExercises();
+updateElapsedUI();
 </script>
 </body>
 </html>
