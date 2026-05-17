@@ -104,8 +104,8 @@
   .exercise-plan { color: var(--muted); font-size: 12px; margin-top: 2px; }
   .last-time { font-size: 12px; color: var(--accent-2); margin-top: 2px; }
   .sets { display: grid; gap: 6px; }
-  .set-row { display: grid; grid-template-columns: 26px 1fr 1fr 1fr auto; gap: 6px; align-items: center; }
-  @media (max-width: 480px) { .set-row { grid-template-columns: 24px 1fr 1fr 1fr auto; } }
+  .set-row { display: grid; grid-template-columns: 24px 1fr 1fr 1fr 30px 26px; gap: 5px; align-items: center; }
+  @media (max-width: 480px) { .set-row { grid-template-columns: 22px 1fr 1fr 1fr 28px 24px; gap: 4px; } }
   .set-row .idx { color: var(--muted); font-size: 12px; font-weight: 600; text-align: center; }
   .set-row input { width: 100%; padding: 8px; background: var(--panel); color: var(--text);
     border: 1px solid var(--border); border-radius: 6px; font-size: 14px; text-align: center;
@@ -116,8 +116,12 @@
   .set-row .head { font-size: 11px; color: var(--muted); text-transform: uppercase; text-align: center;
     letter-spacing: .04em; }
   .icon-btn { background: transparent; color: var(--muted); border: none; cursor: pointer; font-size: 18px;
-    padding: 4px 8px; border-radius: 4px; }
+    padding: 4px 6px; border-radius: 4px; line-height: 1; }
   .icon-btn:hover { color: var(--bad); background: rgba(248,81,73,.1); }
+  .icon-btn.complete { background: var(--panel); color: var(--good); border: 1px solid var(--border);
+    font-size: 14px; font-weight: 800; padding: 6px 0; width: 100%; }
+  .icon-btn.complete:hover { background: var(--good); color: white; border-color: var(--good); }
+  .icon-btn.complete.done { background: var(--good); color: white; border-color: var(--good); }
   .add-set { background: transparent; color: var(--accent-2); border: 1px dashed var(--border);
     border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; margin-top: 4px; width: 100%; }
   .add-set:hover { background: var(--panel); border-color: var(--accent-2); }
@@ -1038,6 +1042,7 @@ function renderExerciseSection(ex, exIdx, subLabel) {
     el("div", { class: "head" }, "Weight"),
     el("div", { class: "head" }, "Reps"),
     el("div", { class: "head" }, "RPE"),
+    el("div", { class: "head" }, "✓"),
     el("div", {})
   ]));
   ex.sets.forEach((set, setIdx) => setsWrap.appendChild(renderSetRow(exIdx, setIdx)));
@@ -1095,10 +1100,19 @@ function renderExerciseSection(ex, exIdx, subLabel) {
   return wrap;
 }
 
+// Default RPE for autofill — gentle ramp across the working sets
+function defaultRPE(ex, setIdx) {
+  const n = ex.sets.length;
+  if (n <= 1) return 7;
+  // 1st set 6.5, last set 7.5, middle interpolated
+  const t = setIdx / (n - 1);
+  return Math.round((6.5 + t * 1.0) * 2) / 2; // rounds to nearest 0.5
+}
+
 function renderSetRow(exIdx, setIdx) {
   const ex = state.active.exercises[exIdx];
   const set = ex.sets[setIdx];
-  const planRep = ex.planReps[setIdx];
+  const planRep = ex.planReps[setIdx] != null ? ex.planReps[setIdx] : ex.planReps[ex.planReps.length - 1];
   const row = el("div", { class: "set-row" });
   row.appendChild(el("div", { class: "idx" }, String(setIdx + 1)));
 
@@ -1129,6 +1143,25 @@ function renderSetRow(exIdx, setIdx) {
   });
   rpeIn.className = rpeClass(parseFloat(set.rpe));
   row.appendChild(rpeIn);
+
+  // ✓ Complete-set autofill
+  const completeBtn = el("button", {
+    class: "icon-btn complete" + (set.reps ? " done" : ""),
+    title: "Complete as planned — fills reps and RPE"
+  }, "✓");
+  completeBtn.addEventListener("click", () => {
+    ensureSessionStarted();
+    if (!set.weight) set.weight = ex.load;
+    set.reps = String(planRep != null ? planRep : "");
+    set.rpe = String(defaultRPE(ex, setIdx));
+    wIn.value = set.weight;
+    rIn.value = set.reps;
+    rpeIn.value = set.rpe;
+    rpeIn.className = rpeClass(parseFloat(set.rpe));
+    completeBtn.classList.add("done");
+    onSetChange(exIdx);
+  });
+  row.appendChild(completeBtn);
 
   const del = el("button", {
     class: "icon-btn", title: "Remove set",
