@@ -158,6 +158,11 @@
   .rest-timer .btn { padding: 6px 10px; font-size: 12px; }
   @keyframes pulse-border { 50% { box-shadow: 0 8px 32px rgba(210,153,34,.6); } }
 
+  /* Screen flash when rest hits zero (visual cue for silent-mode phones) */
+  .flash-overlay { position: fixed; inset: 0; background: var(--bad); opacity: 0;
+    pointer-events: none; z-index: 100; transition: opacity .3s ease; }
+  .flash-overlay.flash { opacity: 0.45; }
+
   .btn { background: var(--accent); color: white; border: none; padding: 10px 16px; border-radius: 6px;
     font-weight: 600; cursor: pointer; font-size: 14px; }
   .btn:hover { filter: brightness(1.1); }
@@ -849,32 +854,60 @@ function updateElapsedUI() {
 }
 setInterval(updateElapsedUI, 1000);
 
-/* REST TIMER */
-let restTimer = { active: false, secondsLeft: 0, totalSeconds: 0, intervalId: null, label: "" };
+/* REST TIMER — absolute-time implementation
+   secondsLeft is COMPUTED from endTime each tick, so it is robust to
+   browser throttling (background tabs, screen lock) and never drifts. */
+let restTimer = { active: false, endTime: 0, totalSeconds: 0, intervalId: null, label: "", secondsLeft: 0, beepedAtZero: false };
+
 function startRest(seconds, label = "Rest") {
   cancelRest();
   restTimer.active = true;
-  restTimer.secondsLeft = seconds;
+  restTimer.endTime = Date.now() + seconds * 1000;
   restTimer.totalSeconds = seconds;
+  restTimer.secondsLeft = seconds;
   restTimer.label = label;
-  restTimer.intervalId = setInterval(tickRest, 1000);
+  restTimer.beepedAtZero = false;
+  restTimer.intervalId = setInterval(tickRest, 250); // tick 4×/sec for smooth UI; counts are derived
   updateRestUI();
 }
 function tickRest() {
-  restTimer.secondsLeft--;
-  if (restTimer.secondsLeft === 0) { beep(); if (navigator.vibrate) navigator.vibrate([200, 100, 200]); }
-  if (restTimer.secondsLeft <= -5) { cancelRest(); return; }
-  updateRestUI();
+  if (!restTimer.active) return;
+  const remain = Math.ceil((restTimer.endTime - Date.now()) / 1000);
+  const prev = restTimer.secondsLeft;
+  restTimer.secondsLeft = remain;
+  // Cross-zero notification fires exactly once
+  if (!restTimer.beepedAtZero && prev > 0 && remain <= 0) {
+    restTimer.beepedAtZero = true;
+    beep();
+    if (navigator.vibrate) navigator.vibrate([220, 100, 220, 100, 220]);
+    flashScreen();
+  }
+  if (remain <= -5) { cancelRest(); return; }
+  if (prev !== remain) updateRestUI(); // only repaint on integer-second changes
 }
 function cancelRest() {
   if (restTimer.intervalId) clearInterval(restTimer.intervalId);
-  restTimer = { active: false, secondsLeft: 0, totalSeconds: 0, intervalId: null, label: "" };
+  restTimer = { active: false, endTime: 0, totalSeconds: 0, intervalId: null, label: "", secondsLeft: 0, beepedAtZero: false };
   updateRestUI();
 }
 function addRest(sec) {
   if (!restTimer.active) return;
-  restTimer.secondsLeft += sec;
-  updateRestUI();
+  restTimer.endTime += sec * 1000;
+  // If we extended back into positive territory, allow the beep again
+  if (Math.ceil((restTimer.endTime - Date.now()) / 1000) > 0) restTimer.beepedAtZero = false;
+  tickRest();
+}
+function flashScreen() {
+  const flash = document.createElement("div");
+  flash.className = "flash-overlay";
+  document.body.appendChild(flash);
+  requestAnimationFrame(() => {
+    flash.classList.add("flash");
+    setTimeout(() => {
+      flash.classList.remove("flash");
+      setTimeout(() => flash.remove(), 400);
+    }, 220);
+  });
 }
 function updateRestUI() {
   const w = $("#rest-timer");
@@ -1538,17 +1571,12 @@ $("#file-import").addEventListener("change", async e => {
   } catch (err) { alert("Could not import: " + err.message); }
 });
 
-// Catch-up tick for backgrounded timers
-let lastTickTime = Date.now();
-setInterval(() => {
-  if (!restTimer.active) { lastTickTime = Date.now(); return; }
-  const now = Date.now();
-  const elapsed = Math.floor((now - lastTickTime) / 1000);
-  if (elapsed >= 2) {
-    for (let i = 0; i < elapsed - 1; i++) tickRest();
-    lastTickTime = now;
-  }
-}, 1000);
+// Re-sync timer immediately when tab/screen returns to foreground.
+// (The endTime-based implementation already self-corrects, but this avoids
+// a brief visual lag while the next 250ms tick arrives.)
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && restTimer.active) tickRest();
+});
 
 /* INIT */
 // If loaded session is missing new fields (warmupDone, startedAt) from older PROGRAM, hydrate
