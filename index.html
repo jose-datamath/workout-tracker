@@ -859,6 +859,8 @@ setInterval(updateElapsedUI, 1000);
    browser throttling (background tabs, screen lock) and never drifts. */
 let restTimer = { active: false, endTime: 0, totalSeconds: 0, intervalId: null, label: "", secondsLeft: 0, beepedAtZero: false };
 
+const REST_KEY = "workout_tracker_v1_rest";
+
 function startRest(seconds, label = "Rest") {
   cancelRest();
   restTimer.active = true;
@@ -868,7 +870,37 @@ function startRest(seconds, label = "Rest") {
   restTimer.label = label;
   restTimer.beepedAtZero = false;
   restTimer.intervalId = setInterval(tickRest, 250); // tick 4×/sec for smooth UI; counts are derived
+  saveRestTimer();
   updateRestUI();
+}
+function saveRestTimer() {
+  localStorage.setItem(REST_KEY, JSON.stringify({
+    endTime: restTimer.endTime,
+    totalSeconds: restTimer.totalSeconds,
+    label: restTimer.label,
+    beepedAtZero: restTimer.beepedAtZero
+  }));
+}
+function restoreRestTimer() {
+  const raw = localStorage.getItem(REST_KEY);
+  if (!raw) return;
+  try {
+    const t = JSON.parse(raw);
+    const remain = Math.ceil((t.endTime - Date.now()) / 1000);
+    // Resume only if the timer hasn't been finished for too long
+    if (remain > -10) {
+      restTimer.active = true;
+      restTimer.endTime = t.endTime;
+      restTimer.totalSeconds = t.totalSeconds;
+      restTimer.secondsLeft = remain;
+      restTimer.label = t.label;
+      restTimer.beepedAtZero = t.beepedAtZero || remain <= 0; // don't re-beep on resume past zero
+      restTimer.intervalId = setInterval(tickRest, 250);
+      updateRestUI();
+    } else {
+      localStorage.removeItem(REST_KEY);
+    }
+  } catch { localStorage.removeItem(REST_KEY); }
 }
 function tickRest() {
   if (!restTimer.active) return;
@@ -878,6 +910,7 @@ function tickRest() {
   // Cross-zero notification fires exactly once
   if (!restTimer.beepedAtZero && prev > 0 && remain <= 0) {
     restTimer.beepedAtZero = true;
+    saveRestTimer();
     beep();
     if (navigator.vibrate) navigator.vibrate([220, 100, 220, 100, 220]);
     flashScreen();
@@ -888,6 +921,7 @@ function tickRest() {
 function cancelRest() {
   if (restTimer.intervalId) clearInterval(restTimer.intervalId);
   restTimer = { active: false, endTime: 0, totalSeconds: 0, intervalId: null, label: "", secondsLeft: 0, beepedAtZero: false };
+  localStorage.removeItem(REST_KEY);
   updateRestUI();
 }
 function addRest(sec) {
@@ -895,6 +929,7 @@ function addRest(sec) {
   restTimer.endTime += sec * 1000;
   // If we extended back into positive territory, allow the beep again
   if (Math.ceil((restTimer.endTime - Date.now()) / 1000) > 0) restTimer.beepedAtZero = false;
+  saveRestTimer();
   tickRest();
 }
 function flashScreen() {
@@ -1508,15 +1543,21 @@ $("#sel-day").addEventListener("change", e => {
   state.active = newSession(state.active.week, newDay);
   state.active.date = $("#sel-date").value || todayISO();
   persistActive(); renderHeader(); renderSessionInfo(); renderWarmup(); renderExercises();
+  $("#session-notes").value = "";
 });
 $("#sel-date").addEventListener("change", e => { state.active.date = e.target.value; persistActive(); });
 $("#btn-reset-session").addEventListener("click", () => {
   if (confirm("Reset this session? Logged sets will be cleared.")) {
     state.active = newSession(state.active.week, state.active.day);
     persistActive(); renderHeader(); renderSessionInfo(); renderWarmup(); renderExercises();
+    $("#session-notes").value = "";
   }
 });
 $("#btn-save-draft").addEventListener("click", () => { persistActive(); toast("Saved"); });
+$("#session-notes").addEventListener("input", e => {
+  state.active.notes = e.target.value;
+  persistActive();
+});
 $("#btn-finish").addEventListener("click", () => {
   const s = state.active;
   s.notes = $("#session-notes").value;
@@ -1587,7 +1628,9 @@ renderHeader();
 renderSessionInfo();
 renderWarmup();
 renderExercises();
+$("#session-notes").value = state.active.notes || "";
 updateElapsedUI();
+restoreRestTimer();
 </script>
 </body>
 </html>
